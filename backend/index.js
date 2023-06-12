@@ -20,25 +20,26 @@ app.use(cookieParser());
 app.use(cors({credentials:true,origin:'http://localhost:5173'}));
 
 
-async function getUserDataFromRequest(req) {
-    return new Promise((resolve, reject) => {
-      const token = req.cookies?.token;
-      if (token) {
-        jwt.verify(token, jwtSecret, {}, (err, userData) => {
-          if (err) throw err;
-          resolve(userData);
-        });
-      } else {
-        reject('no token');
-      }
-    });
-  
-  }
-
-
 app.get('/test', (req,res) => {
     res.json('test ok2');
 });
+
+// 인증
+
+async function getUserDataFromRequest(req) {
+  return new Promise((resolve, reject) => {
+    const token = req.cookies?.token;
+    if (token) {
+      jwt.verify(token, jwtSecret, {}, (err, userData) => {
+        if (err) throw err;
+        resolve(userData);
+      });
+    } else {
+      reject('no token');
+    }
+  });
+
+}
 
 app.get('/profile', (req,res) => {
     const token = req.cookies?.token;
@@ -93,4 +94,29 @@ app.post('/login', async (req,res) => {
     }
   });
 
-app.listen(4000)
+const server = app.listen(4000)
+
+// 웹소켓
+const wsServer = new ws.WebSocketServer({server});
+wsServer.on('connection',(connection,req)=>{
+  const cookies = req.headers.cookie;
+  if(cookies){
+    const tokenCookieString =  cookies.split(';').find(str=>str.startsWith('token='));
+    if(tokenCookieString){
+      const token = tokenCookieString.split('=')[1];
+      if(token){
+        jwt.verify(token,jwtSecret,{},(err,userData)=>{   
+          if(err) throw err;
+          const {userId,username} = userData;
+          connection.userId = userId;
+          connection.username = username;
+        })
+      }
+    }
+  }
+  [...wsServer.clients].forEach(client=>{
+    client.send(JSON.stringify({
+      online:[...wsServer.clients].map(c=>({userId:c.userId,username:c.username}))
+    }))
+  })
+})
