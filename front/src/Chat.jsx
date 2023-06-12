@@ -1,13 +1,17 @@
 import { useEffect, useState } from "react"
+import Avatar from "./Avatar";
 
 export default function Chat(){
     const [ws,setWs] = useState(null);
     const [onlinePeople,setOnlinePeople] = useState({})
+    
+
     useEffect(()=>{
         const ws = new WebSocket('ws://localhost:4000')
         setWs(ws)
         ws.addEventListener('message',handleMessage)
     },[])
+
     function showOnlinePeople(peopleArray){
         const people = {}
         peopleArray.forEach(({userId,username})=>{
@@ -15,12 +19,18 @@ export default function Chat(){
         })
         setOnlinePeople(people);
     }
+
     function handleMessage(event){
         const messageData = JSON.parse(event.data);
         if('online' in messageData){
             showOnlinePeople(messageData.online);
         }
     }
+
+    function selectContact(userId){
+
+    }
+
     return(
         <div className="flex h-screen">
             <div className="bg-white w-1/3 pl-4 pt-4">
@@ -32,8 +42,9 @@ export default function Chat(){
                     MernChat
                 </div>
                 {Object.keys(onlinePeople).map(userId=>(
-                    <div className="border-b border-gray-100 py-2">
-                        <div>{onlinePeople[userId]}</div>
+                    <div onClick={()=>selectContact(userId)} className="border-b border-gray-100 py-2 flex items-center gap-2 cursor-pointer">
+                        <Avatar username={onlinePeople[userId]} userId={userId} />
+                        <span className="text-gray-800">{onlinePeople[userId]}</span>
                     </div>
                 ))}
             </div>
