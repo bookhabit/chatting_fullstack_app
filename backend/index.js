@@ -52,6 +52,12 @@ app.get('/messages/:userId',async (req,res)=>{
   res.json(messages)
 })
 
+// 오프라인 유저 찾기
+app.get('/people',async (req,res)=>{
+  mongoose.connect(process.env.MONGO_URL)
+  const users = await User.find({},{'_id':1,username:1});
+  res.json(users);
+})
 
 // 인증
 

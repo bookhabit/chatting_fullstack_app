@@ -4,10 +4,12 @@ import Logo from "./Logo";
 import { UserContext } from "./UserContext";
 import {uniqBy} from "lodash"
 import axios from "axios";
+import ContackUserList from "./ContactUserList";
 
 export default function Chat(){
     const [ws,setWs] = useState(null);
     const [onlinePeople,setOnlinePeople] = useState({})
+    const [offlinePeople,setOfflinePeople] = useState({});
     const [selectedUserId,setSelectedUserId] = useState(null)
     const [newMessageText,setNewMessageText] = useState('')
     const [messages,setMessages] = useState([]);
@@ -78,6 +80,21 @@ export default function Chat(){
         }
     },[messages])
 
+    // 온라인 했던 사람들을 토대로 오프라인 유저 만들기
+    useEffect(()=>{
+        axios.get('/people').then(res=>{
+            const offLinePeopleArr = res.data
+                    .filter(p=>p._id !== id)
+                    .filter(p=>!Object.keys(onlinePeople).includes(p._id))
+            const offlinePeople = {}
+            offLinePeopleArr.forEach(p=>{
+                offlinePeople[p._id] =p;
+            })
+            setOfflinePeople(offlinePeople)
+        })
+    },[onlinePeople])
+
+    // 채팅방 데이터 가져오기
     useEffect(() => {
         if (selectedUserId) {
           axios.get('/messages/'+selectedUserId).then(res => {
@@ -90,21 +107,31 @@ export default function Chat(){
     delete onlinePeopleExcludLoginUser[id]
 
     const messagesWithoutDupes = uniqBy(messages, '_id');
+    
     return(
         <div className="flex h-screen">
             {/* 웹소켓에 연결된 온라인 유저 목록  */}
             <div className="bg-white w-1/3">
                 <Logo/>
+                {/* 온라인유저 리스트 */}
                 {Object.keys(onlinePeopleExcludLoginUser).map(userId=>(
-                    <div key={userId} onClick={()=>setSelectedUserId(userId)} className={"border-b border-gray-100  flex items-center gap-2 cursor-pointer "+(userId===selectedUserId ? 'bg-blue-50' : '')}>
-                        {userId===selectedUserId && (
-                            <div className="w-1 bg-blue-500 h-12 rounded-r-md"></div>
-                        )}
-                        <div className="flex items-center gap-2 py-2 pl-4 ">
-                            <Avatar username={onlinePeople[userId]} userId={userId} />
-                            <span className="text-gray-800">{onlinePeople[userId]}</span>
-                        </div>
-                    </div>
+                    <ContackUserList 
+                        key={userId}
+                        userId={userId} 
+                        setSelectedUserId={setSelectedUserId}selectedUserId={selectedUserId} 
+                        username={onlinePeopleExcludLoginUser[userId]}
+                        online={true}
+                    />
+                ))}
+                {/* 오프라인유저 리스트 */}
+                {Object.keys(offlinePeople).map(userId=>(
+                    <ContackUserList 
+                        key={userId}
+                        userId={userId} 
+                        setSelectedUserId={setSelectedUserId}selectedUserId={selectedUserId} 
+                        username={offlinePeople[userId].username}
+                        online={false}
+                    />
                 ))}
             </div>
             {/* 선택한 유저와의 채팅방 화면 */}
