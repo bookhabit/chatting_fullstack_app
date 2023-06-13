@@ -62,6 +62,7 @@ export default function Chat(){
             }
         }))
         setNewMessageText('')
+        console.log('message sent')
         setMessages(prev => ([...prev,{
             text: newMessageText,
             sender: id,
@@ -77,11 +78,13 @@ export default function Chat(){
         }
     },[messages])
 
-    useEffect(()=>{
-        if(selectedUserId){
-            axios.get(`/messages/${selectedUserId}`)
+    useEffect(() => {
+        if (selectedUserId) {
+          axios.get('/messages/'+selectedUserId).then(res => {
+            setMessages(res.data);
+          });
         }
-    },selectedUserId)
+      }, [selectedUserId]);
 
     const onlinePeopleExcludLoginUser = {...onlinePeople}
     delete onlinePeopleExcludLoginUser[id]
