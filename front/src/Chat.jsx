@@ -15,10 +15,21 @@ export default function Chat(){
     const divUnderMessages = useRef();
 
     useEffect(()=>{
+        connectToWs();
+    },[])
+    
+    // 웹소켓 연결
+    function connectToWs(){
         const ws = new WebSocket('ws://localhost:4000')
         setWs(ws)
         ws.addEventListener('message',handleMessage)
-    },[])
+        ws.addEventListener('close', () => {
+            setTimeout(() => {
+              console.log('Disconnected. Trying to reconnect.');
+              connectToWs();
+            }, 1000);
+          });
+    }
 
     // 웹소켓 연결된 유저들
     function showOnlinePeople(peopleArray){
