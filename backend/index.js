@@ -5,6 +5,7 @@ const dotenv = require('dotenv');
 const jwt = require('jsonwebtoken');
 const cors = require('cors');
 const User = require('./models/Users')
+const Message = require('./models/Message')
 const bcrypt = require('bcryptjs');
 const ws = require('ws');
 const fs = require('fs');
@@ -99,6 +100,8 @@ const server = app.listen(4000)
 // 웹소켓
 const wsServer = new ws.WebSocketServer({server});
 wsServer.on('connection',(connection,req)=>{
+
+  // read username and id from the cookie for this connection
   const cookies = req.headers.cookie;
   if(cookies){
     const tokenCookieString =  cookies.split(';').find(str=>str.startsWith('token='));
@@ -114,6 +117,32 @@ wsServer.on('connection',(connection,req)=>{
       }
     }
   }
+
+  // 
+  connection.on('message',async (message,isBinary)=>{
+    mongoose.connect(process.env.MONGO_URL)
+    const messageData = JSON.parse(message.toString());
+    console.log('messageData',messageData)
+    const {recipient,text} = messageData.message;
+    if(recipient&&text){
+      const messageDoc = await Message.create({
+        sender:connection.userId,
+        recipient,
+        text,
+      });
+
+      [...wsServer.clients]
+      .filter(c => c.userId === recipient)
+      .forEach(c => c.send(JSON.stringify({
+        text,
+        sender:connection.userId,
+        recipient,
+        _id:messageDoc._id,
+      })));
+    }
+  });
+
+  // notify everyone about online people
   [...wsServer.clients].forEach(client=>{
     client.send(JSON.stringify({
       online:[...wsServer.clients].map(c=>({userId:c.userId,username:c.username}))
